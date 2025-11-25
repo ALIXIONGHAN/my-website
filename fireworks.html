@@ -3,219 +3,247 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>烟花爆炸文字特效</title>
+  <title>🎆 经典轨迹烟花 + 文字爆炸</title>
   <style>
     body {
       margin: 0;
       padding: 0;
       background: #000;
       overflow: hidden;
-      font-family: 'Microsoft YaHei', sans-serif;
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
     }
     canvas {
-      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
   </style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
+  <canvas id="bg"></canvas>
+  <canvas id="trail"></canvas>
+  <canvas id="particles"></canvas>
+  <canvas id="text-layer"></canvas>
 
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    const bgCanvas = document.getElementById('bg');
+    const trailCanvas = document.getElementById('trail');
+    const particleCanvas = document.getElementById('particles');
+    const textCanvas = document.getElementById('text-layer');
 
-    // 设置画布尺寸
+    const bgCtx = bgCanvas.getContext('2d');
+    const trailCtx = trailCanvas.getContext('2d');
+    const pCtx = particleCanvas.getContext('2d');
+    const tCtx = textCanvas.getContext('2d');
+
     function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      [bgCanvas, trailCanvas, particleCanvas, textCanvas].forEach(c => {
+        c.width = w;
+        c.height = h;
+      });
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // 随机祝福语库
+    // 祝福语库
     const messages = [
-      "新年快乐！",
-      "幸福安康",
-      "万事如意",
-      "心想事成",
-      "好运连连",
-      "阖家欢乐",
-      "平安喜乐",
-      "星辰大海",
-      "梦想成真",
-      "Love & Peace"
+      "🎉 新年快乐！", "🎇 幸福安康 💖", "🌟 万事如意！", "💫 梦想成真 ✨",
+      "🌈 好运连连！", "🎆 心想事成 💫", "❤️ 阖家欢乐！", "🌌 平安喜乐 🕊️",
+      "🚀 前程似锦！", "🌠 Love & Peace 🌍", "🔥 闪耀如你！", "🎁 惊喜不断！"
     ];
 
-    // 文字粒子类（用于爆炸时显示文字）
-    class TextParticle {
-      constructor(x, y, text) {
+    // === 上升阶段的烟花主体（未爆炸）===
+    class Rocket {
+      constructor(x) {
         this.x = x;
-        this.y = y;
-        this.text = text;
-        this.alpha = 1;
-        this.life = 60; // 存活帧数
-        this.maxLife = 60;
-      }
-
-      update() {
-        this.alpha = this.life / this.maxLife;
-        this.life--;
-      }
-
-      draw(ctx) {
-        if (this.alpha <= 0) return;
-        ctx.save();
-        ctx.globalAlpha = this.alpha;
-        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        // 发光效果
-        ctx.shadowColor = '#fff';
-        ctx.shadowBlur = 15;
-        ctx.fillText(this.text, this.x, this.y);
-        ctx.restore();
-      }
-
-      isDead() {
-        return this.life <= 0;
-      }
-    }
-
-    // 粒子类（烟花碎片）
-    class Particle {
-      constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.radius = Math.random() * 2 + 1;
-        this.vx = (Math.random() - 0.5) * 8;
-        this.vy = (Math.random() - 0.5) * 8;
-        this.alpha = 1;
-        this.decay = Math.random() * 0.03 + 0.015;
+        this.y = bgCanvas.height; // 从底部开始
+        this.vx = (Math.random() - 0.5) * 2; // 微小水平扰动
+        this.vy = -(8 + Math.random() * 4); // 向上速度
+        this.hue = Math.floor(Math.random() * 360);
+        this.trail = [];
+        this.maxTrailLength = 20;
       }
 
       update() {
         this.x += this.vx;
         this.y += this.vy;
-        this.alpha -= this.decay;
-        this.vy += 0.03; // 重力
+        this.vy += 0.02; // 微弱重力减速（实际是减缓上升）
+
+        // 添加尾迹点
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > this.maxTrailLength) {
+          this.trail.shift();
+        }
+
+        // 到达爆炸高度（上半屏）
+        return this.y < bgCanvas.height * (0.3 + Math.random() * 0.3);
       }
 
+      drawTrail(ctx) {
+        for (let i = 0; i < this.trail.length; i++) {
+          const point = this.trail[i];
+          const alpha = i / this.trail.length;
+          const radius = alpha * 3;
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
+          ctx.fill();
+        }
+      }
+
+      getExplosionPosition() {
+        return { x: this.x, y: this.y };
+      }
+    }
+
+    // === 爆炸文字 ===
+    class TextParticle {
+      constructor(x, y, text) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.life = 90;
+        this.maxLife = 90;
+      }
+      update() { this.life--; }
       draw(ctx) {
+        if (this.life <= 0) return;
+        const progress = this.life / this.maxLife;
+        const alpha = Math.min(1, progress * 2);
+        const scale = 0.6 + (1 - progress) * 1.0;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = `bold ${Math.floor(26 * scale)}px "Microsoft YaHei", Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 25;
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+      }
+      isDead() { return this.life <= 0; }
+    }
+
+    // === 爆炸粒子 ===
+    class Particle {
+      constructor(x, y, hue) {
+        this.x = x;
+        this.y = y;
+        this.hue = hue + Math.random() * 40 - 20;
+        this.radius = Math.random() * 2 + 0.5;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.025 + 0.01;
+        this.gravity = 0.03;
+        this.resistance = 0.98;
+      }
+      update() {
+        this.vx *= this.resistance;
+        this.vy *= this.resistance;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += this.gravity;
+        this.alpha -= this.decay;
+      }
+      draw(ctx) {
+        if (this.alpha <= 0) return;
         ctx.save();
         ctx.globalAlpha = this.alpha;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = `hsla(${this.hue}, 100%, 65%, ${this.alpha})`;
         ctx.fill();
         ctx.restore();
       }
-
-      isDead() {
-        return this.alpha <= 0;
-      }
+      isDead() { return this.alpha <= 0; }
     }
 
-    // 烟花类
-    class Firework {
-      constructor(x, y) {
+    // === 爆炸对象 ===
+    class Explosion {
+      constructor(x, y, hue) {
         this.x = x;
         this.y = y;
+        this.hue = hue;
         this.particles = [];
-        this.textParticle = null;
-        this.colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffa500'];
-        this.exploded = false;
-      }
-
-      explode() {
-        // 创建爆炸粒子
-        const count = 100 + Math.random() * 50;
+        this.text = new TextParticle(x, y, messages[Math.floor(Math.random() * messages.length)]);
+        const count = 130 + Math.floor(Math.random() * 70);
         for (let i = 0; i < count; i++) {
-          this.particles.push(new Particle(this.x, this.y, this.colors[Math.floor(Math.random() * this.colors.length)]));
+          this.particles.push(new Particle(x, y, hue));
         }
-
-        // 创建文字
-        const randomText = messages[Math.floor(Math.random() * messages.length)];
-        this.textParticle = new TextParticle(this.x, this.y, randomText);
-
-        this.exploded = true;
       }
-
       update() {
-        if (!this.exploded) {
-          this.y -= 6; // 上升速度
-          if (this.y < Math.random() * canvas.height * 0.6) {
-            this.explode();
-          }
-        } else {
-          // 更新粒子
-          for (let i = this.particles.length - 1; i >= 0; i--) {
-            this.particles[i].update();
-            if (this.particles[i].isDead()) {
-              this.particles.splice(i, 1);
-            }
-          }
-          // 更新文字
-          if (this.textParticle) {
-            this.textParticle.update();
-          }
-        }
+        this.particles.forEach(p => p.update());
+        this.particles = this.particles.filter(p => !p.isDead());
+        this.text.update();
       }
-
-      draw(ctx) {
-        if (!this.exploded) {
-          // 绘制未爆炸的火球
-          ctx.save();
-          ctx.globalAlpha = 1;
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
-          ctx.restore();
-        } else {
-          // 绘制爆炸粒子
-          this.particles.forEach(p => p.draw(ctx));
-          // 绘制文字
-          if (this.textParticle && !this.textParticle.isDead()) {
-            this.textParticle.draw(ctx);
-          }
-        }
+      drawParticles(ctx) {
+        this.particles.forEach(p => p.draw(ctx));
       }
-
+      drawText(ctx) {
+        if (!this.text.isDead()) this.text.draw(ctx);
+      }
       isDone() {
-        const particlesDone = this.particles.length === 0;
-        const textDone = !this.textParticle || this.textParticle.isDead();
-        return this.exploded && particlesDone && textDone;
+        return this.particles.length === 0 && this.text.isDead();
       }
     }
 
-    const fireworks = [];
+    const rockets = [];   // 正在上升的烟花
+    const explosions = []; // 已爆炸的烟花
 
-    function launchFirework() {
-      const x = Math.random() * canvas.width;
-      fireworks.push(new Firework(x, canvas.height));
+    function launchRocket() {
+      const x = 50 + Math.random() * (bgCanvas.width - 100);
+      rockets.push(new Rocket(x));
+    }
+
+    function drawBackground() {
+      bgCtx.fillStyle = '#000';
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
     }
 
     // 主循环
     function animate() {
       requestAnimationFrame(animate);
 
-      // 半透明黑层实现拖尾效果
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
 
-      // 随机发射烟花
-      if (Math.random() < 0.03) {
-        launchFirework();
+      // 清除各层
+      trailCtx.fillStyle = 'rgba(0,0,0,0.1)';
+      trailCtx.fillRect(0, 0, trailCanvas.width, trailCanvas.height);
+
+      pCtx.fillStyle = 'rgba(0,0,0,0.12)';
+      pCtx.fillRect(0, 0, particleCanvas.width, particleCanvas.height);
+
+      tCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+
+      // 发射新火箭（频率适中）
+      if (Math.random() < 0.04) {
+        launchRocket();
       }
 
-      // 更新和绘制所有烟花
-      for (let i = fireworks.length - 1; i >= 0; i--) {
-        fireworks[i].update();
-        fireworks[i].draw(ctx);
-        if (fireworks[i].isDone()) {
-          fireworks.splice(i, 1);
+      // 更新和绘制上升中的火箭
+      for (let i = rockets.length - 1; i >= 0; i--) {
+        const rocket = rockets[i];
+        const shouldExplode = rocket.update();
+        rocket.drawTrail(trailCtx);
+        if (shouldExplode) {
+          const pos = rocket.getExplosionPosition();
+          explosions.push(new Explosion(pos.x, pos.y, rocket.hue));
+          rockets.splice(i, 1);
+        }
+      }
+
+      // 更新和绘制爆炸
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        const exp = explosions[i];
+        exp.update();
+        exp.drawParticles(pCtx);
+        exp.drawText(tCtx);
+        if (exp.isDone()) {
+          explosions.splice(i, 1);
         }
       }
     }
@@ -223,4 +251,4 @@
     animate();
   </script>
 </body>
-</html>
+</html>22
