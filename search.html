@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>远程搜索（模拟）</title>
+  <style>
+
+    .search-container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+  
+    .results {
+      margin-top: 10px;
+      background: white;
+      border: 1px solid #ddd;
+      border-top: none;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    .results.show {
+      display: block;
+    }
+    .result-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+    .result-item:hover {
+      background-color: #f0f8ff;
+    }
+    .loading {
+      padding: 8px 12px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+
+<div class="search-container">
+  <input type="text" id="searchInput" placeholder="输入关键词搜索（如：苹果、banana）..." autocomplete="off" />
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+  // 模拟远程数据库（实际项目中这里会是 API 返回的数据）
+  const mockDatabase = [
+    "苹果",
+    "香蕉",
+    "橙子",
+    "葡萄",
+    "西瓜",
+    "apple",
+    "banana",
+    "orange",
+    "grape",
+    "watermelon",
+    "猕猴桃",
+    "草莓",
+    "pineapple",
+    "芒果",
+    "火龙果"
+  ];
+
+  const searchInput = document.getElementById('searchInput');
+  const resultsContainer = document.getElementById('results');
+
+  // 防抖函数（避免频繁请求）
+  function debounce(func, delay) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => func.apply(this, args), delay);
+    };
+  }
+
+  // 模拟远程搜索（带延迟）
+  function simulateRemoteSearch(query, callback) {
+    // 模拟网络延迟（300ms）
+    setTimeout(() => {
+      if (!query.trim()) {
+        callback([]);
+        return;
+      }
+      const lowerQuery = query.toLowerCase();
+      const results = mockDatabase.filter(item =>
+        item.toLowerCase().includes(lowerQuery)
+      );
+      callback(results);
+    }, 300);
+  }
+
+  // 渲染搜索结果
+  function renderResults(results) {
+    if (results.length === 0) {
+      resultsContainer.innerHTML = '<div class="result-item">无匹配结果</div>';
+    } else {
+      resultsContainer.innerHTML = results
+        .map(item => `<div class="result-item">${item}</div>`)
+        .join('');
+    }
+    resultsContainer.classList.add('show');
+  }
+
+  // 显示加载状态
+  function showLoading() {
+    resultsContainer.innerHTML = '<div class="loading">搜索中...</div>';
+    resultsContainer.classList.add('show');
+  }
+
+  // 搜索处理函数
+  function handleSearch() {
+    const query = searchInput.value;
+    if (!query.trim()) {
+      resultsContainer.classList.remove('show');
+      return;
+    }
+
+    showLoading();
+
+    simulateRemoteSearch(query, (results) => {
+      renderResults(results);
+    });
+  }
+
+  // 绑定输入事件（带防抖）
+  searchInput.addEventListener('input', debounce(handleSearch, 300));
+
+  // 点击结果时填入输入框
+  resultsContainer.addEventListener('click', (e) => {
+    if (e.target.classList.contains('result-item')) {
+      searchInput.value = e.target.textContent;
+      resultsContainer.classList.remove('show');
+    }
+  });
+
+  // 点击其他地方隐藏结果
+  document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+      resultsContainer.classList.remove('show');
+    }
+  });
+</script>
+
+</body>
+</html>
