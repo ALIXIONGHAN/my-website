@@ -3,15 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>远程搜索（模拟）</title>
+  <title>远程搜索（模拟） - 作用域限定</title>
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      background-color: #f5f5f5;
+    }
 
+    /* 所有样式都限定在 .search-container 内部 */
     .search-container {
       max-width: 500px;
       margin: 0 auto;
     }
-  
-    .results {
+
+    .search-container input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .search-container .results {
       margin-top: 10px;
       background: white;
       border: 1px solid #ddd;
@@ -20,18 +35,22 @@
       overflow-y: auto;
       display: none;
     }
-    .results.show {
+
+    .search-container .results.show {
       display: block;
     }
-    .result-item {
+
+    .search-container .result-item {
       padding: 8px 12px;
       cursor: pointer;
       border-bottom: 1px solid #eee;
     }
-    .result-item:hover {
+
+    .search-container .result-item:hover {
       background-color: #f0f8ff;
     }
-    .loading {
+
+    .search-container .loading {
       padding: 8px 12px;
       color: #888;
     }
@@ -39,35 +58,22 @@
 </head>
 <body>
 
+<!-- 可以有多个 search-container，彼此独立 -->
 <div class="search-container">
   <input type="text" id="searchInput" placeholder="输入关键词搜索（如：苹果、banana）..." autocomplete="off" />
   <div class="results" id="results"></div>
 </div>
 
 <script>
-  // 模拟远程数据库（实际项目中这里会是 API 返回的数据）
   const mockDatabase = [
-    "苹果",
-    "香蕉",
-    "橙子",
-    "葡萄",
-    "西瓜",
-    "apple",
-    "banana",
-    "orange",
-    "grape",
-    "watermelon",
-    "猕猴桃",
-    "草莓",
-    "pineapple",
-    "芒果",
-    "火龙果"
+    "苹果", "香蕉", "橙子", "葡萄", "西瓜",
+    "apple", "banana", "orange", "grape", "watermelon",
+    "猕猴桃", "草莓", "pineapple", "芒果", "火龙果"
   ];
 
   const searchInput = document.getElementById('searchInput');
   const resultsContainer = document.getElementById('results');
 
-  // 防抖函数（避免频繁请求）
   function debounce(func, delay) {
     let timer;
     return function (...args) {
@@ -76,9 +82,7 @@
     };
   }
 
-  // 模拟远程搜索（带延迟）
   function simulateRemoteSearch(query, callback) {
-    // 模拟网络延迟（300ms）
     setTimeout(() => {
       if (!query.trim()) {
         callback([]);
@@ -92,7 +96,6 @@
     }, 300);
   }
 
-  // 渲染搜索结果
   function renderResults(results) {
     if (results.length === 0) {
       resultsContainer.innerHTML = '<div class="result-item">无匹配结果</div>';
@@ -104,31 +107,25 @@
     resultsContainer.classList.add('show');
   }
 
-  // 显示加载状态
   function showLoading() {
     resultsContainer.innerHTML = '<div class="loading">搜索中...</div>';
     resultsContainer.classList.add('show');
   }
 
-  // 搜索处理函数
   function handleSearch() {
     const query = searchInput.value;
     if (!query.trim()) {
       resultsContainer.classList.remove('show');
       return;
     }
-
     showLoading();
-
     simulateRemoteSearch(query, (results) => {
       renderResults(results);
     });
   }
 
-  // 绑定输入事件（带防抖）
   searchInput.addEventListener('input', debounce(handleSearch, 300));
 
-  // 点击结果时填入输入框
   resultsContainer.addEventListener('click', (e) => {
     if (e.target.classList.contains('result-item')) {
       searchInput.value = e.target.textContent;
@@ -136,7 +133,6 @@
     }
   });
 
-  // 点击其他地方隐藏结果
   document.addEventListener('click', (e) => {
     if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
       resultsContainer.classList.remove('show');
@@ -146,3 +142,5 @@
 
 </body>
 </html>
+
+
