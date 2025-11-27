@@ -1,623 +1,971 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多火箭连续发射动画</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: linear-gradient(to bottom, #0a0a2a, #1a1a4a);
-            overflow: hidden;
-            font-family: 'Arial', sans-serif;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-        }
-        
-        .container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            max-width: 800px;
-            max-height: 600px;
-            overflow: hidden;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0, 150, 255, 0.5);
-        }
-        
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        
-        .message {
-            position: absolute;
-            text-align: center;
-            z-index: 10;
-            opacity: 0;
-            pointer-events: none;
-            transform-origin: center;
-        }
-        
-        .message h1 {
-            font-size: 1rem;
-            text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
-            white-space: nowrap;
-        }
-        
-        .stars {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-        
-        .star {
-            position: absolute;
-            background-color: white;
-            border-radius: 50%;
-            animation: twinkle 3s infinite;
-        }
-        
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; }
-            50% { opacity: 1; }
-        }
-        
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 20;
-            display: flex;
-            gap: 10px;
-        }
-        
-        button {
-            background: rgba(0, 50, 100, 0.7);
-            color: white;
-            border: 1px solid #4da6ff;
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        button:hover {
-            background: rgba(0, 100, 200, 0.7);
-            box-shadow: 0 0 10px #4da6ff;
-        }
-        
-        .counter {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            z-index: 20;
-        }
-        
-        .info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            z-index: 20;
-        }
-        
-        /* 移动端适配 */
-        @media (max-width: 768px) {
-            .container {
-                border-radius: 0;
-                max-height: 100%;
-            }
-            
-            .controls {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>璀璨夜空 — 在线烟花秀</title>
+  <meta name="description" content="沉浸式、互动性强、视觉震撼的在线烟花体验。支持自动表演与手动燃放，多种烟花样式、颜色主题与节能优化。" />
+  <style>
+    :root{
+      --bg-top:#060a1b;
+      --bg-mid:#020513;
+      --bg-bottom:#000208;
+      --ui-bg:rgba(15,18,30,.75);
+      --ui-border:rgba(255,255,255,.12);
+      --ui-text:#e8ecff;
+      --accent:#8fd5ff;
+      --accent-2:#ffb86c;
+      --safe: env(safe-area-inset-bottom, 0px);
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background: radial-gradient(1200px 700px at 50% -200px, #0b1440 0%, var(--bg-top) 40%, var(--bg-mid) 70%, var(--bg-bottom) 100%);
+      color:var(--ui-text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      overflow:hidden;
+      touch-action: none; /* 让拖动更顺滑 */
+      -webkit-tap-highlight-color: transparent;
+      user-select:none;
+    }
+
+    /* 星星层（微弱闪烁） */
+    .stars, .stars2, .stars3 {
+      position: fixed;
+      inset: 0;
+      pointer-events:none;
+      background-repeat: repeat;
+      background-position: 0 0;
+      animation: drift linear infinite;
+      mix-blend-mode: screen;
+      opacity:.7;
+    }
+    .stars  { background-image: radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,.9) 40%, rgba(255,255,255,0) 41%),
+                                 radial-gradient(1px 1px at 80px 120px, rgba(255,255,255,.6) 50%, rgba(255,255,255,0) 51%),
+                                 radial-gradient(1.5px 1.5px at 160px 200px, rgba(255,255,255,.8) 50%, rgba(255,255,255,0) 51%);
+               background-size: 200px 200px; animation-duration: 120s; }
+    .stars2 { background-image: radial-gradient(1.2px 1.2px at 50px 90px, rgba(255,255,200,.9) 50%, rgba(255,255,255,0) 51%),
+                                 radial-gradient(1px 1px at 190px 40px, rgba(150,200,255,.8) 50%, rgba(255,255,255,0) 51%),
+                                 radial-gradient(1.3px 1.3px at 120px 170px, rgba(255,255,255,.7) 50%, rgba(255,255,255,0) 51%);
+               background-size: 240px 240px; animation-duration: 180s; opacity:.5;}
+    .stars3 { background-image: radial-gradient(0.8px 0.8px at 90px 30px, rgba(255,255,255,.8) 50%, rgba(255,255,255,0) 51%),
+                                 radial-gradient(0.8px 0.8px at 20px 150px, rgba(255,200,255,.8) 50%, rgba(255,255,255,0) 51%),
+                                 radial-gradient(0.8px 0.8px at 170px 110px, rgba(200,255,255,.8) 50%, rgba(255,255,255,0) 51%);
+               background-size: 300px 300px; animation-duration: 260s; opacity:.35;}
+    @keyframes drift {
+      from { background-position: 0 0; }
+      to   { background-position: -1000px -500px; }
+    }
+
+    /* 画布层 */
+    #scene {
+      position: fixed;
+      inset: 0;
+      display:block;
+    }
+
+    /* 顶部信息和按钮 */
+    .topbar{
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      z-index:10;
+      pointer-events:none;
+    }
+    .brand{
+      pointer-events:auto;
+      background: linear-gradient(90deg, rgba(255,255,255,.95), rgba(255,255,255,.75));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-shadow: 0 0 12px rgba(140,200,255,.25);
+      font-size: clamp(16px, 3vw, 24px);
+    }
+    .spacer{flex:1;}
+    .btn{
+      pointer-events:auto;
+      appearance:none;
+      border:none;
+      padding:10px 12px;
+      border-radius: 10px;
+      background: var(--ui-bg);
+      color:var(--ui-text);
+      border:1px solid var(--ui-border);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-weight:600;
+      cursor:pointer;
+      transition: transform .08s ease, background .2s ease, border-color .2s ease;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-size: 14px;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn.toggled{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(143,213,255,.2) inset; }
+
+    /* 控制面板（默认折叠） */
+    .panel{
+      position: fixed;
+      right: 12px;
+      bottom: calc(12px + var(--safe));
+      max-width: min(92vw, 360px);
+      background: var(--ui-bg);
+      color: var(--ui-text);
+      border:1px solid var(--ui-border);
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.35);
+      overflow:hidden;
+      transform-origin: bottom right;
+      z-index: 12;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .panel-header{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding:10px 12px;
+      border-bottom:1px solid var(--ui-border);
+      font-weight:700;
+      letter-spacing:.04em;
+    }
+    .panel-body{
+      padding: 10px 12px 12px;
+      display:grid;
+      gap:10px;
+    }
+    .row{ display:grid; gap:8px; }
+    .row.inline{ grid-template-columns: 1fr auto; align-items:center; }
+    label{ font-size:12px; opacity:.9; }
+    select, input[type="range"], input[type="checkbox"]{
+      width:100%;
+      accent-color: var(--accent);
+    }
+    .hint{ font-size:12px; opacity:.75; }
+
+    /* 底部提示与祝福语 */
+    .footer-hint{
+      position: fixed;
+      left: 12px;
+      bottom: calc(12px + var(--safe));
+      z-index: 10;
+      font-size: 12px;
+      color: rgba(220,230,255,.85);
+      background: rgba(0,0,0,.25);
+      padding:8px 10px;
+      border-radius: 10px;
+      border:1px solid var(--ui-border);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events:none;
+    }
+    .toast{
+      position: fixed;
+      top: 62px;
+      left:50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.5);
+      color:#fff;
+      border:1px solid var(--ui-border);
+      padding:8px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      z-index: 20;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    /* 节日祝福语浮现 */
+    .greet {
+      position: fixed;
+      left:50%;
+      top: 28%;
+      transform: translateX(-50%);
+      color: #fff7d6;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-align:center;
+      font-size: clamp(20px, 6vw, 42px);
+      text-shadow: 0 0 12px rgba(255,230,160,.55), 0 0 30px rgba(255,160,60,.25);
+      opacity:0;
+      pointer-events:none;
+      z-index: 9;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,.35));
+      white-space: pre-line;
+    }
+    .greet.show{
+      animation: greetPop 3.5s ease forwards;
+    }
+    @keyframes greetPop {
+      0% { opacity:0; transform: translateX(-50%) translateY(10px) scale(.98); }
+      12%{ opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
+      80%{ opacity:1; }
+      100%{ opacity:0; transform: translateX(-50%) translateY(-10px) scale(1.02);}
+    }
+
+    /* 响应式 */
+    @media (max-width: 480px) {
+      .footer-hint { font-size:11px; }
+      .btn { padding:9px 10px; font-size:13px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="stars" id="stars"></div>
-        <canvas id="rocketCanvas"></canvas>
-        <div class="info">火箭数量: <span id="rocketCount">0</span></div>
-        <div class="counter">发射次数: <span id="launchCount">0</span></div>
-        <div class="controls">
-            <button id="addRocket">添加火箭</button>
-            <button id="removeRocket">移除火箭</button>
-            <button id="speedUp">加速</button>
-            <button id="speedDown">减速</button>
-            <button id="pauseResume">暂停</button>
-        </div>
-    </div>
+  <!-- 星星层 -->
+  <div class="stars"></div>
+  <div class="stars2"></div>
+  <div class="stars3"></div>
 
-    <script>
-        // 祝福语数组
-        const blessings = [
-            "祝福您前程似锦！",
-            "愿您的未来如火箭般一飞冲天",
-            "每一次努力都带来新的高度",
-            "梦想照亮前路，努力成就未来",
-            "愿您的人生充满精彩与成功",
-            "坚持不懈，终将抵达星辰大海",
-            "愿您的每一天都充满阳光与希望",
-            "勇往直前，创造无限可能",
-            "愿幸福与成功永远伴随您",
-            "放飞梦想，收获辉煌人生",
-            "愿努力与幸运常伴您左右",
-            "未来可期，前程似锦"
+  <!-- 画布 -->
+  <canvas id="scene" aria-label="烟花表演画布"></canvas>
+
+  <!-- 顶部栏 -->
+  <div class="topbar" role="toolbar" aria-label="控制栏">
+    <div class="brand">璀璨夜空 — 在线烟花秀</div>
+    <div class="spacer"></div>
+    <button id="btn-audio" class="btn" aria-pressed="false" title="开启/关闭烟花音效">🔊 音效</button>
+    <button id="btn-auto" class="btn toggled" aria-pressed="true" title="自动烟花秀模式">✨ 自动</button>
+    <button id="btn-panel" class="btn" aria-expanded="false" title="打开控制面板">🎛️ 控制</button>
+  </div>
+
+  <!-- 控制面板（默认隐藏） -->
+  <div id="panel" class="panel" hidden>
+    <div class="panel-header">
+      <span>烟花自定义</span>
+      <button id="btn-close-panel" class="btn" title="收起">收起</button>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <label for="type">烟花类型</label>
+        <select id="type">
+          <option value="classic">经典球形</option>
+          <option value="chrys">菊花</option>
+          <option value="willow">柳条</option>
+          <option value="spiral">螺旋</option>
+          <option value="heart">心形</option>
+          <option value="smile">笑脸</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="color">颜色主题</label>
+        <select id="color">
+          <option value="random">随机</option>
+          <option value="mono">单色</option>
+          <option value="rainbow">彩虹</option>
+          <option value="festival">节日主题</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="speed">发射速度</label>
+        <input id="speed" type="range" min="0.6" max="1.6" step="0.02" value="1" />
+      </div>
+      <div class="row">
+        <label for="density">发射密度</label>
+        <input id="density" type="range" min="0.4" max="2.0" step="0.02" value="1" />
+      </div>
+      <div class="row inline">
+        <label for="eco">节能模式</label>
+        <input id="eco" type="checkbox" />
+      </div>
+      <div class="row inline">
+        <label for="sound">音效开关</label>
+        <input id="sound" type="checkbox" />
+      </div>
+      <div class="hint">提示：移动端长按或拖动屏幕可连续燃放，点击上方“自动”切换自动表演。</div>
+    </div>
+  </div>
+
+  <!-- 底部提示 -->
+  <div class="footer-hint">
+    点击/长按屏幕即可燃放烟花 · 拖动形成烟花雨
+  </div>
+
+  <!-- 节日祝福语 -->
+  <div id="greet" class="greet" aria-hidden="true"></div>
+
+  <!-- 轻提示 -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    ;(() => {
+      const canvas = document.getElementById('scene');
+      const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+      let DPR = Math.min(2, window.devicePixelRatio || 1);
+
+      // UI elements
+      const btnAudio = document.getElementById('btn-audio');
+      const btnAuto = document.getElementById('btn-auto');
+      const btnPanel = document.getElementById('btn-panel');
+      const panel = document.getElementById('panel');
+      const btnClosePanel = document.getElementById('btn-close-panel');
+      const selectType = document.getElementById('type');
+      const selectColor = document.getElementById('color');
+      const rangeSpeed = document.getElementById('speed');
+      const rangeDensity = document.getElementById('density');
+      const chkEco = document.getElementById('eco');
+      const chkSound = document.getElementById('sound');
+      const greetEl = document.getElementById('greet');
+      const toastEl = document.getElementById('toast');
+
+      // State
+      const state = {
+        autoShow: true,
+        allowSound: false,
+        ecoMode: false,
+        colorTheme: 'random',
+        fwType: 'classic',
+        speedMul: 1,
+        densityMul: 1,
+        holiday: detectHoliday(),
+        lowPowerHinted: false,
+      };
+
+      // Resize canvas
+      function resize() {
+        const { innerWidth:w, innerHeight:h } = window;
+        DPR = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.floor(w * DPR);
+        canvas.height = Math.floor(h * DPR);
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+      window.addEventListener('resize', resize, { passive:true });
+      resize();
+
+      // Audio (WebAudio requires user interaction to start)
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const audio = {
+        ctx: null,
+        gain: null,
+        enabled: false,
+      };
+      function initAudio() {
+        if (audio.ctx) return;
+        audio.ctx = new AudioCtx();
+        audio.gain = audio.ctx.createGain();
+        audio.gain.gain.value = 0.8;
+        audio.gain.connect(audio.ctx.destination);
+      }
+      function clickEnableAudio() {
+        try {
+          initAudio();
+          audio.ctx.resume();
+          audio.enabled = true;
+          state.allowSound = true;
+          btnAudio.classList.add('toggled');
+          chkSound.checked = true;
+          showToast('音效已开启');
+        } catch(e){}
+      }
+      function playLaunch(x, y) {
+        if (!audio.enabled || !state.allowSound) return;
+        const t = audio.ctx.currentTime;
+        const osc = audio.ctx.createOscillator();
+        const g = audio.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, t);
+        osc.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.15, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+        osc.connect(g).connect(audio.gain);
+        osc.start(t);
+        osc.stop(t + 0.32);
+      }
+      function playBurst() {
+        if (!audio.enabled || !state.allowSound) return;
+        const t = audio.ctx.currentTime;
+        const bufferSize = 2 * audio.ctx.sampleRate;
+        const noiseBuffer = audio.ctx.createBuffer(1, bufferSize, audio.ctx.sampleRate);
+        const out = noiseBuffer.getChannelData(0);
+        for (let i=0;i<bufferSize;i++){
+          out[i] = (Math.random()*2-1) * Math.pow(1 - i/bufferSize, 2);
+        }
+        const noise = audio.ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const bandpass = audio.ctx.createBiquadFilter();
+        bandpass.type = 'bandpass';
+        bandpass.frequency.value = 1600;
+        const g = audio.ctx.createGain();
+        g.gain.setValueAtTime(0.18, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+        noise.connect(bandpass).connect(g).connect(audio.gain);
+        noise.start(t);
+        noise.stop(t + 1.25);
+      }
+
+      // Utility
+      const rand = (a,b)=>a + Math.random()*(b-a);
+      const randi = (a,b)=>Math.floor(rand(a,b+1));
+      const clamp = (v,a,b)=>Math.max(a, Math.min(b, v));
+
+      function showToast(text, ms=1800){
+        toastEl.textContent = text;
+        toastEl.classList.add('show');
+        setTimeout(()=>toastEl.classList.remove('show'), ms);
+      }
+
+      // Colors
+      const palettes = {
+        rainbow: ['#ff4d4d','#ffa64d','#ffe94d','#6dff4d','#4dfff6','#4d7dff','#c34dff'],
+        classic: ['#ffd166','#f4978e','#c1fba4','#bde0fe','#ffafcc','#f7b801','#ff686b'],
+        goldRed: ['#ff2b2b','#ff8c00','#ffd54d','#ffec99','#ff5353','#ffcc66'],
+      };
+      function pickColor(theme){
+        if (theme === 'mono'){
+          if (!pickColor.mono) pickColor.mono = `hsl(${randi(0,359)}, 90%, 60%)`;
+          return pickColor.mono;
+        }
+        if (theme === 'rainbow'){
+          return palettes.rainbow[randi(0, palettes.rainbow.length-1)];
+        }
+        if (theme === 'festival'){
+          return palettes.goldRed[randi(0, palettes.goldRed.length-1)];
+        }
+        // random
+        return `hsl(${randi(0,359)}, 92%, ${randi(55,65)}%)`;
+      }
+
+      // Holiday detection and greeting
+      function detectHoliday(){
+        const now = new Date();
+        const m = now.getMonth()+1;
+        const d = now.getDate();
+        // 简易节日判断（可按需扩展）
+        if ((m===1 && d===1)) return { key: 'newyear', greet: '元旦快乐\n新年鸿运到！', theme: 'festival' };
+        if (isSpringFestival(now)) return { key: 'spring', greet: '新春快乐\n万事如意！', theme: 'festival' };
+        if (m===10 && d===1) return { key: 'nation', greet: '国庆快乐\n繁荣昌盛！', theme: 'festival' };
+        return null;
+      }
+      // 粗略农历春节估算（近几年范围）：使用近年固定表
+      function isSpringFestival(date){
+        const y = date.getFullYear();
+        const springs = {
+          2024: '2024-02-10', 2025:'2025-01-29', 2026:'2026-02-17', 2027:'2027-02-06', 2028:'2028-01-26',
+          2029:'2029-02-13', 2030:'2030-02-03'
+        };
+        const s = springs[y];
+        if(!s) return false;
+        const sDate = new Date(s+'T00:00:00');
+        return date.getFullYear()===sDate.getFullYear() && date.getMonth()===sDate.getMonth() && date.getDate()===sDate.getDate();
+      }
+
+      function showGreetingIfHoliday(){
+        if (!state.holiday) return;
+        greetEl.textContent = state.holiday.greet;
+        greetEl.setAttribute('aria-hidden','false');
+        greetEl.classList.add('show');
+        setTimeout(()=>greetEl.classList.remove('show'), 3600);
+      }
+      showGreetingIfHoliday();
+
+      // Firework system
+      const W = ()=>canvas.width / DPR;
+      const H = ()=>canvas.height / DPR;
+
+      const rockets = [];
+      const particles = [];
+      let lastTime = performance.now();
+
+      // Performance monitor (simple)
+      let fps = 60, lowFPS = false;
+      const fpsQueue = [];
+      function updateFPS(dt){
+        const current = 1000/dt;
+        fpsQueue.push(current);
+        if (fpsQueue.length > 30) fpsQueue.shift();
+        fps = fpsQueue.reduce((a,b)=>a+b,0)/fpsQueue.length;
+        lowFPS = fps < 28;
+        if (lowFPS && !state.lowPowerHinted){
+          state.lowPowerHinted = true;
+          chkEco.checked = true;
+          state.ecoMode = true;
+          showToast('已自动开启节能模式，保证流畅性');
+        }
+      }
+
+      class Rocket {
+        constructor(x, y, targetX, targetY, color, type){
+          this.x = x; this.y = y;
+          this.vx = (targetX - x) * rand(0.012, 0.018) * state.speedMul;
+          const vy0 = (targetY - y) * rand(0.012, 0.018) * state.speedMul;
+          this.vy = vy0 - rand(3.0, 4.2) * 0.2 * state.speedMul;
+          this.color = color;
+          this.type = type;
+          this.life = rand(0.7, 1.1);
+          this.elapsed = 0;
+          this.sparkT = 0;
+        }
+        step(dt){
+          this.elapsed += dt;
+          this.x += this.vx * (dt*60);
+          this.y += this.vy * (dt*60);
+          this.vy += 0.045 * (dt*60); // gravity
+          this.sparkT += dt;
+          // trail
+          if (!state.ecoMode && this.sparkT > 0.016){
+            this.sparkT = 0;
+            spawnParticle(this.x, this.y, this.color, 0.6, 0.6, 0.2, 'trail');
+          }
+          // explode condition
+          if (this.elapsed >= this.life || this.vy >= 0){
+            explode(this.x, this.y, this.color, this.type);
+            return false;
+          }
+          return true;
+        }
+        render(){}
+      }
+
+      function spawnParticle(x, y, color, size=1, speed=1, life=1, mode='burst', meta=null){
+        particles.push(new Particle(x,y,color,size,speed,life,mode,meta));
+      }
+
+      class Particle {
+        constructor(x, y, color, size, speed, life, mode, meta){
+          this.x=x; this.y=y;
+          this.color = color;
+          this.baseSize = size;
+          this.size = size * rand(0.7,1.3);
+          this.life = life * rand(0.85,1.15);
+          this.age = 0;
+          this.mode = mode;
+          this.meta = meta;
+
+          if (mode==='trail'){
+            this.vx = rand(-0.2,0.2);
+            this.vy = rand(0.1,0.4);
+            this.alpha = 0.8;
+          } else {
+            const a = Math.random()*Math.PI*2;
+            const sp = speed * rand(1.0, 1.8) * (state.ecoMode ? 0.85 : 1);
+            this.vx = Math.cos(a)*sp;
+            this.vy = Math.sin(a)*sp;
+            this.alpha = 1.0;
+          }
+          this.gravity = 0.018;
+          this.drag = 0.992;
+          this.twinkle = Math.random()<0.25;
+        }
+        step(dt){
+          this.age += dt;
+          if (this.mode==='trail'){
+            this.alpha *= 0.92;
+            this.size *= 0.98;
+            this.y += this.vy * (dt*60);
+            return this.alpha > 0.05;
+          }
+          // burst particles
+          this.vx *= this.drag;
+          this.vy *= this.drag;
+          this.vy += this.gravity * (dt*60)/60;
+          this.x += this.vx * (dt*60);
+          this.y += this.vy * (dt*60);
+          const lifeRatio = 1 - this.age / this.life;
+          this.alpha = Math.max(0, lifeRatio);
+          if (this.twinkle && Math.random()<0.1) this.alpha *= rand(0.2,1);
+          return lifeRatio > 0;
+        }
+        render(){
+          if (this.alpha <= 0) return;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = this.alpha;
+          const s = this.size;
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, s, 0, Math.PI*2);
+          ctx.fill();
+          // glow
+          if (!state.ecoMode){
+            const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, s*5);
+            g.addColorStop(0, this.color);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.globalAlpha = this.alpha*0.25;
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, s*5, 0, Math.PI*2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+        }
+      }
+
+      function explode(x, y, baseColor, type){
+        const colorTheme = state.colorTheme === 'festival' || state.holiday ? 'festival' : state.colorTheme;
+        const pick = ()=> pickColor(colorTheme==='random' ? 'random' : colorTheme==='mono' ? 'mono' : colorTheme==='festival' ? 'festival' : 'rainbow');
+
+        const densityBase = state.ecoMode ? 80 : 150;
+        const countMul = state.densityMul * (state.ecoMode ? 0.7 : 1);
+        let count = Math.floor(densityBase * countMul);
+
+        let points = [];
+        if (type === 'heart'){
+          // parametric heart
+          count = Math.floor(count*0.8);
+          for (let i=0;i<count;i++){
+            const t = Math.PI*2*i/count;
+            const xx = 16*Math.pow(Math.sin(t),3);
+            const yy = 13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+            points.push({x: xx/16, y: -yy/16});
+          }
+        } else if (type === 'smile'){
+          // circle + smile arc + eyes
+          const n = Math.floor(count*0.7);
+          for (let i=0;i<n;i++){
+            const a = i/n*Math.PI*2;
+            points.push({x: Math.cos(a), y: Math.sin(a)});
+          }
+          // smile
+          for (let i=0;i<60;i++){
+            const a = Math.PI*0.25 + (i/60)*Math.PI*0.5;
+            points.push({x: 0.6*Math.cos(a), y: 0.6*Math.sin(a)+0.1});
+          }
+          // eyes
+          for (let i=0;i<24;i++){
+            const a = i/24*Math.PI*2;
+            points.push({x: -0.35 + 0.07*Math.cos(a), y: -0.2 + 0.1*Math.sin(a)});
+            points.push({x:  0.35 + 0.07*Math.cos(a), y: -0.2 + 0.1*Math.sin(a)});
+          }
+        } else if (type === 'spiral'){
+          const turns = 3;
+          for (let i=0;i<count;i++){
+            const t = i / count * Math.PI * 2 * turns;
+            const r = i / count;
+            points.push({x: r * Math.cos(t), y: r * Math.sin(t)});
+          }
+        } else if (type === 'willow'){
+          // favor downward
+          for (let i=0;i<count;i++){
+            const a = Math.random()*Math.PI*2;
+            const r = Math.pow(Math.random(),0.35);
+            const bias = Math.cos(a);
+            const yy = Math.sin(a);
+            points.push({x: r*bias, y: Math.abs(yy)*r}); // more downward
+          }
+        } else if (type === 'chrys'){
+          for (let i=0;i<count;i++){
+            const a = i / count * Math.PI*2;
+            const r = 1;
+            points.push({x: r*Math.cos(a), y: r*Math.sin(a)});
+          }
+        } else {
+          // classic random sphere
+          for (let i=0;i<count;i++){
+            const a = Math.random()*Math.PI*2;
+            const r = Math.pow(Math.random(), 0.35);
+            points.push({x: r*Math.cos(a), y: r*Math.sin(a)});
+          }
+        }
+
+        const speed = rand(4.2, 6.0) * (state.ecoMode ? 0.8 : 1) * state.speedMul;
+        const size = rand(1.2, 1.9) * (state.ecoMode ? 0.8 : 1);
+        const life = rand(0.9, 1.35) * (state.ecoMode ? 0.85 : 1);
+
+        // Create particles
+        for (let i=0;i<points.length;i++){
+          const p = points[i];
+          const color = (state.colorTheme==='random' || state.colorTheme==='rainbow' || state.colorTheme==='festival') ? pick() : baseColor;
+          const angleSpeed = Math.hypot(p.x, p.y);
+          const sp = speed * (0.6 + angleSpeed*0.8);
+          const part = new Particle(x, y, color, size, sp, life, 'burst');
+          // direct velocity from pattern
+          part.vx = p.x * sp;
+          part.vy = p.y * sp;
+          // add slight variance
+          part.vx += rand(-0.3,0.3);
+          part.vy += rand(-0.3,0.3);
+          particles.push(part);
+        }
+
+        // Core flash
+        if (!state.ecoMode){
+          for (let i=0;i<20;i++){
+            spawnParticle(x, y, baseColor, 1.2, rand(1.5,2.2), 0.5, 'burst');
+          }
+        }
+
+        // sound
+        playBurst();
+
+        // Festival extras: occasional "福" 或 简易国旗星
+        if ((state.holiday?.key === 'spring' || state.holiday?.key === 'newyear') && Math.random()<0.2){
+          drawGlyphBurst(x, y, '福', '#ffd54d');
+        } else if (state.holiday?.key === 'nation' && Math.random()<0.25){
+          drawFlagStars(x, y);
+        }
+      }
+
+      function drawGlyphBurst(cx, cy, text, col){
+        // draw text to offscreen and sample points
+        const off = document.createElement('canvas');
+        const s = 200;
+        off.width = s; off.height = s;
+        const octx = off.getContext('2d');
+        octx.fillStyle = '#000';
+        octx.fillRect(0,0,s,s);
+        octx.font = 'bold 160px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
+        octx.textAlign='center';
+        octx.textBaseline='middle';
+        octx.fillStyle = '#fff';
+        octx.fillText(text, s/2, s/2 + 10);
+        const img = octx.getImageData(0,0,s,s).data;
+        const step = state.ecoMode ? 6 : 4;
+        for (let y=0;y<s;y+=step){
+          for (let x=0;x<s;x+=step){
+            const idx = (y*s + x)*4 + 3; // alpha
+            if (img[idx] > 10){
+              const nx = (x/s - 0.5) * 2;
+              const ny = (y/s - 0.5) * 2;
+              const p = new Particle(cx + nx*28, cy + ny*28, col, 1.4, rand(0.8,1.2), 1.1, 'burst');
+              p.vx *= 0.2; p.vy *= 0.2;
+              particles.push(p);
+            }
+          }
+        }
+      }
+
+      function drawFlagStars(cx, cy){
+        // five stars arrangement (simplified)
+        const stars = [
+          {x:0, y:0, r:28},   // big
+          {x:60, y:-30, r:10},
+          {x:80, y:-10, r:10},
+          {x:80, y:20, r:10},
+          {x:60, y:40, r:10},
         ];
-        
-        // 创建星空背景
-        function createStars() {
-            const starsContainer = document.getElementById('stars');
-            const starCount = 100;
-            
-            for (let i = 0; i < starCount; i++) {
-                const star = document.createElement('div');
-                star.classList.add('star');
-                
-                // 随机位置
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * 100}%`;
-                
-                // 随机大小
-                const size = Math.random() * 3;
-                star.style.width = `${size}px`;
-                star.style.height = `${size}px`;
-                
-                // 随机动画延迟
-                star.style.animationDelay = `${Math.random() * 3}s`;
-                
-                starsContainer.appendChild(star);
-            }
+        for (const s of stars){
+          const n = state.ecoMode ? 40 : 80;
+          for (let i=0;i<n;i++){
+            const a = i/n * Math.PI*2;
+            const px = cx + s.x + Math.cos(a)*s.r;
+            const py = cy + s.y + Math.sin(a)*s.r;
+            const p = new Particle(px, py, '#ffd54d', 1.3, rand(0.8,1.2), 1.0, 'burst');
+            p.vx *= 0.4; p.vy *= 0.4;
+            particles.push(p);
+          }
         }
-        
-        // 获取Canvas元素和上下文
-        const canvas = document.getElementById('rocketCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // 设置Canvas尺寸为容器大小
-        function resizeCanvas() {
-            const container = document.querySelector('.container');
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
+      }
+
+      function launch(x, y, opt = {}){
+        const baseX = x ?? rand(40, W()-40);
+        const baseY = H() + 10;
+        const targetX = x ?? rand(60, W()-60);
+        const targetY = y ?? rand(H()*0.18, H()*0.55);
+        const type = opt.type || randomType();
+        const color = pickColor(state.colorTheme === 'festival' || state.holiday ? 'festival' : state.colorTheme);
+        rockets.push(new Rocket(baseX, baseY, targetX, targetY, color, type));
+        playLaunch(baseX, baseY);
+      }
+
+      function randomType(){
+        const types = ['classic','chrys','willow','spiral','heart','smile'];
+        return types[randi(0, types.length-1)];
+      }
+
+      // Auto show choreograph
+      let autoTimer = 0;
+      function autoChoreo(dt){
+        autoTimer -= dt;
+        if (autoTimer <= 0){
+          const lanes = randi(2, 4);
+          const pad = 30;
+          for (let i=0;i<lanes;i++){
+            const x = pad + (W()-pad*2) * (i + Math.random()*0.5) / lanes;
+            const y = rand(H()*0.18, H()*0.5);
+            const t = state.fwType === 'classic' ? randomType() : state.fwType;
+            launch(x, y, { type: t });
+          }
+          const base = 1.3, variance = 0.6;
+          autoTimer = (base + Math.random()*variance) / (state.densityMul * state.speedMul);
         }
-        
-        // 初始调整尺寸
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-        
-        // 火箭对象数组
-        let rockets = [];
-        const maxRockets = 8;
-        
-        // 火箭类
-        class Rocket {
-            constructor(x, color) {
-                this.x = x;
-                this.y = canvas.height + 50; // 从底部开始
-                this.width = 20;
-                this.height = 60;
-                this.speed = Math.random() * 2 + 2; // 随机速度
-                this.launched = true; // 立即发射
-                this.exploded = false;
-                this.color = color;
-                this.trailParticles = [];
-                this.messageElement = null;
-                this.messageStartTime = 0;
-                this.explosionParticles = [];
-                this.resetDelay = 0; // 重置延迟
-            }
-            
-            // 创建尾迹粒子
-            createTrailParticles() {
-                if (this.exploded) return;
-                
-                // 主尾焰粒子
-                for (let i = 0; i < 3; i++) {
-                    const angle = Math.random() * Math.PI - Math.PI / 2;
-                    const speed = Math.random() * 3 + 2;
-                    const velocity = {
-                        x: Math.cos(angle) * speed,
-                        y: Math.sin(angle) * speed + 2
-                    };
-                    
-                    const size = Math.random() * 6 + 4;
-                    const life = Math.random() * 30 + 20;
-                    
-                    // 创建从橙色到黄色的渐变
-                    const colors = ['#ff4500', '#ff8c00', '#ffa500', '#ffd700'];
-                    const color = colors[Math.floor(Math.random() * colors.length)];
-                    
-                    this.trailParticles.push(new Particle(
-                        this.x + (Math.random() - 0.5) * 10,
-                        this.y + this.height / 2,
-                        color,
-                        velocity,
-                        size,
-                        life
-                    ));
-                }
-                
-                // 火花颗粒
-                for (let i = 0; i < 2; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = Math.random() * 2 + 1;
-                    const velocity = {
-                        x: Math.cos(angle) * speed,
-                        y: Math.sin(angle) * speed + 1
-                    };
-                    
-                    const size = Math.random() * 3 + 1;
-                    const life = Math.random() * 20 + 10;
-                    
-                    this.trailParticles.push(new Particle(
-                        this.x + (Math.random() - 0.5) * 15,
-                        this.y + this.height / 2,
-                        '#ffffff',
-                        velocity,
-                        size,
-                        life
-                    ));
-                }
-            }
-            
-            // 创建爆炸粒子
-            createExplosion() {
-                this.exploded = true;
-                
-                for (let i = 0; i < 100; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = Math.random() * 5 + 2;
-                    const velocity = {
-                        x: Math.cos(angle) * speed,
-                        y: Math.sin(angle) * speed
-                    };
-                    
-                    const size = Math.random() * 4 + 2;
-                    const life = Math.random() * 60 + 30;
-                    
-                    // 随机颜色
-                    const colors = [this.color, '#ff8c00', '#ffff00', '#ffffff', '#ff69b4'];
-                    const color = colors[Math.floor(Math.random() * colors.length)];
-                    
-                    this.explosionParticles.push(new Particle(
-                        this.x,
-                        this.y,
-                        color,
-                        velocity,
-                        size,
-                        life
-                    ));
-                }
-                
-                // 显示祝福文字
-                this.showMessage();
-                
-                // 设置重置延迟
-                this.resetDelay = 30; // 30帧后重置
-                
-                updateLaunchCount();
-            }
-            
-            // 显示祝福文字
-            showMessage() {
-                // 创建消息元素
-                this.messageElement = document.createElement('div');
-                this.messageElement.className = 'message';
-                this.messageElement.style.left = `${this.x}px`;
-                this.messageElement.style.top = `${this.y}px`;
-                this.messageElement.style.color = this.color;
-                this.messageElement.style.opacity = '0';
-                this.messageElement.style.transform = 'translate(-50%, -50%) scale(0.5)';
-                
-                // 随机选择祝福语
-                const blessing = blessings[Math.floor(Math.random() * blessings.length)];
-                this.messageElement.innerHTML = `<h1>${blessing}</h1>`;
-                
-                document.querySelector('.container').appendChild(this.messageElement);
-                this.messageStartTime = Date.now();
-                
-                // 文字动画：由小变大再消失
-                this.animateMessage();
-            }
-            
-            // 文字动画
-            animateMessage() {
-                if (!this.messageElement) return;
-                
-                const elapsed = Date.now() - this.messageStartTime;
-                const duration = 2000; // 2秒动画
-                
-                if (elapsed < duration) {
-                    // 前1.5秒：由小变大
-                    if (elapsed < 1500) {
-                        const scale = 0.5 + (elapsed / 1500) * 1.5;
-                        this.messageElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
-                        this.messageElement.style.opacity = 1;
-                    } 
-                    // 后0.5秒：逐渐消失
-                    else {
-                        const fadeProgress = (elapsed - 1500) / 500;
-                        this.messageElement.style.opacity = 1 - fadeProgress;
-                    }
-                    
-                    requestAnimationFrame(() => this.animateMessage());
-                } else {
-                    // 动画结束，移除元素
-                    if (this.messageElement.parentNode) {
-                        this.messageElement.parentNode.removeChild(this.messageElement);
-                    }
-                    this.messageElement = null;
-                }
-            }
-            
-            // 重置火箭
-            reset() {
-                this.y = canvas.height + 50;
-                this.x = Math.random() * (canvas.width - 100) + 50;
-                this.speed = Math.random() * 2 + 2;
-                this.exploded = false;
-                this.trailParticles = [];
-                this.explosionParticles = [];
-                this.resetDelay = 0;
-            }
-            
-            // 绘制火箭
-            draw() {
-                if (this.exploded) return;
-                
-                // 火箭主体
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
-                
-                // 火箭头部
-                ctx.beginPath();
-                ctx.moveTo(this.x - this.width / 2, this.y - this.height);
-                ctx.lineTo(this.x, this.y - this.height - 15);
-                ctx.lineTo(this.x + this.width / 2, this.y - this.height);
-                ctx.closePath();
-                ctx.fillStyle = this.color;
-                ctx.fill();
-                
-                // 火箭翼
-                ctx.beginPath();
-                ctx.moveTo(this.x - this.width / 2, this.y - this.height / 2);
-                ctx.lineTo(this.x - this.width, this.y);
-                ctx.lineTo(this.x - this.width / 2, this.y);
-                ctx.closePath();
-                ctx.fillStyle = '#cccccc';
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.moveTo(this.x + this.width / 2, this.y - this.height / 2);
-                ctx.lineTo(this.x + this.width, this.y);
-                ctx.lineTo(this.x + this.width / 2, this.y);
-                ctx.closePath();
-                ctx.fillStyle = '#cccccc';
-                ctx.fill();
-            }
-            
-            // 绘制尾焰渐变
-            drawExhaust() {
-                if (this.exploded) return;
-                
-                const gradient = ctx.createLinearGradient(
-                    this.x, this.y,
-                    this.x, this.y + 50
-                );
-                gradient.addColorStop(0, this.color.replace(')', ', 0.8)').replace('rgb', 'rgba'));
-                gradient.addColorStop(0.5, this.color.replace(')', ', 0.6)').replace('rgb', 'rgba'));
-                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.moveTo(this.x - 15, this.y);
-                ctx.lineTo(this.x, this.y + 50);
-                ctx.lineTo(this.x + 15, this.y);
-                ctx.closePath();
-                ctx.fill();
-            }
-            
-            // 更新火箭位置
-            update() {
-                if (!this.exploded) {
-                    this.y -= this.speed;
-                    
-                    // 当火箭到达顶部时触发爆炸
-                    if (this.y < canvas.height * 0.2) {
-                        this.createExplosion();
-                    }
-                } else {
-                    // 爆炸后处理重置
-                    if (this.resetDelay > 0) {
-                        this.resetDelay--;
-                    } else {
-                        this.reset();
-                    }
-                }
-                
-                // 创建尾迹粒子
-                this.createTrailParticles();
-                
-                // 更新和绘制尾迹粒子
-                this.trailParticles = this.trailParticles.filter(particle => {
-                    particle.update();
-                    particle.draw();
-                    return particle.life > 0 && particle.alpha > 0;
-                });
-                
-                // 更新和绘制爆炸粒子
-                this.explosionParticles = this.explosionParticles.filter(particle => {
-                    particle.update();
-                    particle.draw();
-                    return particle.life > 0 && particle.alpha > 0;
-                });
-            }
+      }
+
+      // Input handling: click, long press, drag for continuous fire
+      let isPressing = false;
+      let pressInterval = 0;
+
+      function pointerPos(e){
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        return { x, y };
+      }
+
+      function onDown(e){
+        isPressing = true;
+        const {x,y} = pointerPos(e);
+        manualFire(x,y);
+        // start audio on first interaction if toggled
+        if (btnAudio.classList.contains('toggled') || chkSound.checked) clickEnableAudio();
+      }
+      function onMove(e){
+        if (!isPressing) return;
+        const {x,y} = pointerPos(e);
+        manualFire(x,y, true);
+      }
+      function onUp(){
+        isPressing = false;
+        pressInterval = 0;
+      }
+      function manualFire(x, y, continuous=false){
+        pressInterval -= dtLast;
+        if (!continuous || pressInterval <= 0){
+          const t = Math.random()<0.5 ? state.fwType : randomType();
+          launch(x, y, { type: t });
+          pressInterval = clamp(0.08 / state.densityMul, 0.03, 0.15);
         }
-        
-        // 粒子类
-        class Particle {
-            constructor(x, y, color, velocity, size, life) {
-                this.x = x;
-                this.y = y;
-                this.color = color;
-                this.velocity = velocity;
-                this.size = size;
-                this.life = life;
-                this.alpha = 1;
-                this.decay = Math.random() * 0.02 + 0.01;
-            }
-            
-            update() {
-                this.x += this.velocity.x;
-                this.y += this.velocity.y;
-                this.alpha -= this.decay;
-                this.life--;
-                return this.life > 0 && this.alpha > 0;
-            }
-            
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
+      }
+
+      canvas.addEventListener('mousedown', onDown);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); onDown(e); }, { passive:false });
+      canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); onMove(e); }, { passive:false });
+      canvas.addEventListener('touchend', (e)=>{ e.preventDefault(); onUp(e); }, { passive:false });
+
+      // UI interactions
+      btnAuto.addEventListener('click', ()=>{
+        state.autoShow = !state.autoShow;
+        btnAuto.classList.toggle('toggled', state.autoShow);
+        btnAuto.setAttribute('aria-pressed', String(state.autoShow));
+        showToast(state.autoShow ? '自动烟花秀已开启' : '自动烟花秀已暂停');
+      });
+      btnPanel.addEventListener('click', ()=>{
+        const open = panel.hasAttribute('hidden');
+        panel.toggleAttribute('hidden', !open);
+        btnPanel.classList.toggle('toggled', open);
+        btnPanel.setAttribute('aria-expanded', String(open));
+      });
+      btnClosePanel.addEventListener('click', ()=>{ panel.hidden = true; btnPanel.classList.remove('toggled'); btnPanel.setAttribute('aria-expanded','false'); });
+
+      btnAudio.addEventListener('click', ()=>{
+        if (!audio.ctx) initAudio();
+        if (!audio.ctx) return;
+        if (audio.ctx.state === 'suspended') audio.ctx.resume();
+        audio.enabled = !audio.enabled;
+        state.allowSound = audio.enabled;
+        btnAudio.classList.toggle('toggled', audio.enabled);
+        btnAudio.setAttribute('aria-pressed', String(audio.enabled));
+        chkSound.checked = audio.enabled;
+        showToast(audio.enabled ? '音效已开启' : '音效已关闭');
+      });
+
+      selectType.addEventListener('change', ()=>{ state.fwType = selectType.value; });
+      selectColor.addEventListener('change', ()=>{
+        state.colorTheme = selectColor.value;
+        if (state.colorTheme !== 'mono') pickColor.mono = null; // reset mono cache
+        if (state.colorTheme === 'festival' && !state.holiday){
+          showToast('已切换到节日主题');
         }
-        
-        // 计数器
-        let launchCount = 0;
-        document.getElementById('launchCount').textContent = launchCount;
-        document.getElementById('rocketCount').textContent = 0;
-        
-        // 动画控制
-        let animationId = null;
-        let isPaused = false;
-        
-        // 更新发射次数
-        function updateLaunchCount() {
-            launchCount++;
-            document.getElementById('launchCount').textContent = launchCount;
+      });
+      rangeSpeed.addEventListener('input', ()=>{ state.speedMul = parseFloat(rangeSpeed.value); });
+      rangeDensity.addEventListener('input', ()=>{ state.densityMul = parseFloat(rangeDensity.value); });
+      chkEco.addEventListener('change', ()=>{ state.ecoMode = chkEco.checked; showToast(state.ecoMode ? '节能模式开启' : '节能模式关闭'); });
+      chkSound.addEventListener('change', ()=>{
+        if (chkSound.checked){ clickEnableAudio(); }
+        else { state.allowSound = false; audio.enabled = false; btnAudio.classList.remove('toggled'); btnAudio.setAttribute('aria-pressed','false'); showToast('音效已关闭'); }
+      });
+
+      // Initialize defaults (apply holiday theme)
+      if (state.holiday){
+        state.colorTheme = 'festival';
+        selectColor.value = 'festival';
+      }
+
+      // Render loop
+      let dtLast = 0;
+      function loop(t){
+        const dt = Math.min(0.05, (t - lastTime)/1000); // cap
+        dtLast = dt;
+        lastTime = t;
+        updateFPS(dt);
+
+        // Clear with subtle fade for trails
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = state.ecoMode ? 0.35 : 0.25;
+        ctx.fillStyle = '#000214';
+        ctx.fillRect(0,0,W(),H());
+        ctx.globalAlpha = 1;
+
+        // Auto show
+        if (state.autoShow){
+          autoChoreo(dt);
         }
-        
-        // 添加火箭
-        function addRocket() {
-            if (rockets.length >= maxRockets) return;
-            
-            // 随机颜色
-            const colors = [
-                '#ff4d4d', '#4d94ff', '#4dff4d', '#ffff4d', 
-                '#ff4dff', '#4dffff', '#ff8c4d', '#8c4dff'
-            ];
-            const color = colors[rockets.length % colors.length];
-            
-            // 随机位置
-            const x = Math.random() * (canvas.width - 100) + 50;
-            
-            const rocket = new Rocket(x, color);
-            rockets.push(rocket);
-            
-            document.getElementById('rocketCount').textContent = rockets.length;
+
+        // Update rockets
+        for (let i=rockets.length-1;i>=0;i--){
+          const r = rockets[i];
+          if (!r.step(dt)) rockets.splice(i,1);
         }
-        
-        // 移除火箭
-        function removeRocket() {
-            if (rockets.length <= 1) return;
-            
-            // 移除最后一个火箭的消息元素
-            const lastRocket = rockets[rockets.length - 1];
-            if (lastRocket.messageElement && lastRocket.messageElement.parentNode) {
-                lastRocket.messageElement.parentNode.removeChild(lastRocket.messageElement);
-            }
-            
-            rockets.pop();
-            document.getElementById('rocketCount').textContent = rockets.length;
+
+        // Update particles
+        const maxParticles = state.ecoMode ? 900 : 1800;
+        for (let i=particles.length-1;i>=0;i--){
+          if (!particles[i].step(dt)) particles.splice(i,1);
         }
-        
-        // 动画循环
-        function animate() {
-            if (isPaused) return;
-            
-            // 清除画布
-            ctx.fillStyle = 'rgba(10, 10, 42, 0.1)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // 更新所有火箭
-            rockets.forEach(rocket => {
-                rocket.update();
-                rocket.drawExhaust();
-                rocket.draw();
-            });
-            
-            animationId = requestAnimationFrame(animate);
+        // Soft cap
+        if (particles.length > maxParticles){
+          particles.splice(0, particles.length - maxParticles);
         }
-        
-        // 初始化
-        function init() {
-            createStars();
-            
-            // 初始添加3个火箭
-            for (let i = 0; i < 3; i++) {
-                addRocket();
-            }
-            
-            // 开始动画
-            animate();
-            
-            // 添加控制按钮事件
-            document.getElementById('addRocket').addEventListener('click', addRocket);
-            document.getElementById('removeRocket').addEventListener('click', removeRocket);
-            
-            document.getElementById('speedUp').addEventListener('click', () => {
-                rockets.forEach(rocket => {
-                    rocket.speed = Math.min(rocket.speed + 0.5, 8);
-                });
-            });
-            
-            document.getElementById('speedDown').addEventListener('click', () => {
-                rockets.forEach(rocket => {
-                    rocket.speed = Math.max(rocket.speed - 0.5, 1);
-                });
-            });
-            
-            document.getElementById('pauseResume').addEventListener('click', () => {
-                isPaused = !isPaused;
-                document.getElementById('pauseResume').textContent = isPaused ? '继续' : '暂停';
-                
-                if (!isPaused) {
-                    animate();
-                }
-            });
+
+        // Render particles
+        for (let i=0;i<particles.length;i++){
+          particles[i].render();
         }
-        
-        // 页面加载完成后初始化
-        window.addEventListener('load', init);
-    </script>
+
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+
+      // Start with a small choreographed burst
+      setTimeout(()=>{
+        const n = 3;
+        for (let i=0;i<n;i++){
+          setTimeout(()=>{
+            launch(rand(80, W()-80), rand(H()*0.2, H()*0.5), { type: randomType() });
+          }, i*260);
+        }
+      }, 400);
+
+      // Multi-emitters at bottom firing for "multi cannon" look in auto mode
+      setInterval(()=>{
+        if (!state.autoShow) return;
+        const pads = randi(2,4);
+        for (let i=0;i<pads;i++){
+          const x = rand(40, W()-40);
+          const y = rand(H()*0.25, H()*0.55);
+          launch(x, y, { type: randomType() });
+        }
+      }, 5000);
+
+      // Visibility handling to save CPU
+      document.addEventListener('visibilitychange', ()=>{
+        if (document.hidden){
+          state.autoShow = false;
+          btnAuto.classList.remove('toggled');
+          btnAuto.setAttribute('aria-pressed','false');
+        } else {
+          // don't auto resume to respect user; hint once
+          if (!state.lowPowerHinted){
+            showToast('已暂停动画（后台），点击“自动”继续表演');
+            state.lowPowerHinted = true;
+          }
+        }
+      });
+
+    })();
+  </script>
 </body>
 </html>
