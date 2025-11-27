@@ -213,6 +213,21 @@
       100%{ opacity:0; transform: translateX(-50%) translateY(-10px) scale(1.02);}
     }
 
+    /* 烟花文字效果 */
+    .firework-text {
+      position: absolute;
+      color: #fff;
+      font-weight: bold;
+      text-align: center;
+      text-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+      pointer-events: none;
+      z-index: 8;
+      opacity: 0;
+      transform: scale(0.1);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      white-space: nowrap;
+    }
+
     /* 响应式 */
     @media (max-width: 480px) {
       .footer-hint { font-size:11px; }
@@ -281,7 +296,7 @@
         <label for="sound">音效开关</label>
         <input id="sound" type="checkbox" />
       </div>
-      <div class="hint">提示：移动端长按或拖动屏幕可连续燃放，点击上方“自动”切换自动表演。</div>
+      <div class="hint">提示：移动端长按或拖动屏幕可连续燃放，点击上方"自动"切换自动表演。</div>
     </div>
   </div>
 
@@ -329,6 +344,69 @@
         holiday: detectHoliday(),
         lowPowerHinted: false,
       };
+
+      // 烟花文字系统
+      const fireworkTexts = [];
+      
+      // 烟花文字类
+      class FireworkText {
+        constructor(x, y, text, color) {
+          this.x = x;
+          this.y = y;
+          this.text = text;
+          this.color = color;
+          this.age = 0;
+          this.life = 3.0; // 文字显示3秒
+          this.element = null;
+          this.createElement();
+        }
+        
+        createElement() {
+          this.element = document.createElement('div');
+          this.element.className = 'firework-text';
+          this.element.textContent = this.text;
+          this.element.style.color = this.color;
+          this.element.style.left = this.x + 'px';
+          this.element.style.top = this.y + 'px';
+          document.body.appendChild(this.element);
+          
+          // 触发动画
+          setTimeout(() => {
+            this.element.style.opacity = '1';
+            this.element.style.transform = 'scale(1)';
+          }, 10);
+        }
+        
+        step(dt) {
+          this.age += dt;
+          const lifeRatio = 1 - this.age / this.life;
+          
+          // 前半段保持显示，后半段逐渐消失
+          if (lifeRatio < 0.5) {
+            this.element.style.opacity = lifeRatio * 2;
+          }
+          
+          return lifeRatio > 0;
+        }
+        
+        remove() {
+          if (this.element && this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+          }
+        }
+      }
+
+      // 随机祝福语
+      const blessings = [
+        '新年快乐', '恭喜发财', '万事如意', '心想事成', 
+        '阖家幸福', '平安喜乐', '好运连连', '前程似锦',
+        '福星高照', '笑口常开', '幸福安康', '大吉大利'
+      ];
+
+      // 随机选择祝福语
+      function randomBlessing() {
+        return blessings[Math.floor(Math.random() * blessings.length)];
+      }
 
       // Resize canvas
       function resize() {
@@ -699,6 +777,13 @@
         // sound
         playBurst();
 
+        // 添加烟花文字效果
+        if (Math.random() < 0.3) { // 30%概率显示文字
+          const text = randomBlessing();
+          const textColor = pick();
+          fireworkTexts.push(new FireworkText(x, y, text, textColor));
+        }
+
         // Festival extras: occasional "福" 或 简易国旗星
         if ((state.holiday?.key === 'spring' || state.holiday?.key === 'newyear') && Math.random()<0.2){
           drawGlyphBurst(x, y, '福', '#ffd54d');
@@ -920,6 +1005,14 @@
           particles.splice(0, particles.length - maxParticles);
         }
 
+        // Update firework texts
+        for (let i=fireworkTexts.length-1;i>=0;i--){
+          if (!fireworkTexts[i].step(dt)) {
+            fireworkTexts[i].remove();
+            fireworkTexts.splice(i,1);
+          }
+        }
+
         // Render particles
         for (let i=0;i<particles.length;i++){
           particles[i].render();
@@ -959,7 +1052,7 @@
         } else {
           // don't auto resume to respect user; hint once
           if (!state.lowPowerHinted){
-            showToast('已暂停动画（后台），点击“自动”继续表演');
+            showToast('已暂停动画（后台），点击"自动"继续表演');
             state.lowPowerHinted = true;
           }
         }
